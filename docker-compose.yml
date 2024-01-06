@@ -1,0 +1,66 @@
+version: '3'
+
+services:
+  main:
+    container_name: main
+    build:
+      context: .
+      dockerfile: ./deploy/Dockerfile
+    ports:
+      - "8080${APP_ADDR}"
+    restart: on-failure
+    networks:
+      - network
+    depends_on:
+      - postgres
+      - redis
+      - nats
+
+  web:
+    container_name: web
+    build: 
+      context: ./web/app
+      dockerfile: ./Dockerfile
+    ports:
+      - "3000:80"
+    networks:
+      - network
+    
+
+  postgres:
+    container_name: postgres
+    image: postgres:alpine3.19
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+    - "./migrations/000001_orders.up.sql:/docker-entrypoint-initdb.d/init.sql"
+    ports:
+    - "5432:5432"
+    networks:
+      - network
+
+  redis:
+    container_name: redis
+    image: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - network
+
+  nats:
+    image: nats
+    container_name: nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "6222:6222"
+    command: [ "-js" ]
+    networks:
+    - network
+
+
+networks:
+  network:
+    driver: bridge
